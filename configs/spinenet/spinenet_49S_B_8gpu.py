@@ -114,7 +114,8 @@ optimizer = dict(
     lr=0.07,
     momentum=0.9,
     weight_decay=4e-5,
-    paramwise_cfg=dict(norm_decay_mult=0))
+    # paramwise_cfg=dict(norm_decay_mult=0)
+)
 optimizer_config = dict(grad_clip=dict(max_norm=10, norm_type=2))
 # learning policy
 lr_config = dict(
@@ -140,3 +141,4 @@ work_dir = './work_dirs/spinenet_49S_B/'
 load_from = None
 resume_from = None
 workflow = [('train', 1)]
+find_unused_parameters=True
