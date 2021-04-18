@@ -76,9 +76,9 @@ class AnchorHead(BaseDenseHead, BBoxTestMixin):
 
         self.bbox_coder = build_bbox_coder(bbox_coder)
         self.loss_cls = build_loss(loss_cls)
-        self.register_parameter("focal_s", param=self.loss_cls.focal_s)
+        # self.register_parameter("focal_s", param=self.loss_cls.focal_s)
         self.loss_bbox = build_loss(loss_bbox)
-        self.register_parameter(name="smooth_l1_s", param=self.loss_bbox.smooth_l1_s)
+        # self.register_parameter(name="smooth_l1_s", param=self.loss_bbox.smooth_l1_s)
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg
         if self.train_cfg:
@@ -492,7 +492,7 @@ class AnchorHead(BaseDenseHead, BBoxTestMixin):
             bbox_targets_list,
             bbox_weights_list,
             num_total_samples=num_total_samples)
-        return dict(loss_cls=losses_cls, loss_bbox=losses_bbox)
+        return dict(loss_cls=losses_cls, loss_bbox=losses_bbox, focal_s=self.loss_cls.focal_s, smooth_l1_s=self.loss_bbox.smooth_l1_s)
 
     @force_fp32(apply_to=('cls_scores', 'bbox_preds'))
     def get_bboxes(self,

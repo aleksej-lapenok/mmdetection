@@ -89,7 +89,7 @@ class SmoothL1Loss(nn.Module):
         self.reduction = reduction
         self.loss_weight = loss_weight
         self.smooth_l1_s = torch.nn.Parameter(torch.ones(1, dtype=torch.float32))
-        # self.register_parameter(name="smooth_l1_s", param=self.smooth_l1_s)
+        self.register_parameter(name="smooth_l1_s", param=self.smooth_l1_s)
 
     def forward(self,
                 pred,

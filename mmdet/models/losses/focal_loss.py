@@ -168,7 +168,7 @@ class FocalLoss(nn.Module):
         self.reduction = reduction
         self.loss_weight = loss_weight
         self.focal_s = torch.nn.Parameter(torch.zeros(1, dtype=torch.float32))
-        # self.register_parameter("focal_s", param=self.focal_s)
+        self.register_parameter("focal_s", param=self.focal_s)
 
     def forward(self,
                 pred,
