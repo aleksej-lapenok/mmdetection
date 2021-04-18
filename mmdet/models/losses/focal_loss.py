@@ -86,7 +86,7 @@ def _sigmoid_focal_loss(focal_s, inputs, targets, alpha=2.0, gamma=0.25, reducti
 
     return loss #+ torch.pow(focal_s, 2)
 
-def sigmoid_focal_loss(focal_s,
+def sigmoid_focal_loss(#focal_s,
                        pred,
                        target,
                        weight=None,
@@ -165,7 +165,7 @@ class FocalLoss(nn.Module):
         self.reduction = reduction
         self.loss_weight = loss_weight
         self.focal_s = torch.nn.Parameter(torch.zeros(1, dtype=torch.float32))
-        self.register_parameter("focal_s", param=self.focal_s)
+        # self.register_parameter("focal_s", param=self.focal_s)
 
     def forward(self,
                 pred,
@@ -202,7 +202,7 @@ class FocalLoss(nn.Module):
                 calculate_loss_func = py_sigmoid_focal_loss
 
             loss_cls = self.loss_weight * calculate_loss_func(
-                self.focal_s,
+                # self.focal_s,
                 pred,
                 target,
                 weight,
