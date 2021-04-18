@@ -8,7 +8,7 @@ from .utils import weighted_loss
 
 @mmcv.jit(derivate=True, coderize=True)
 @weighted_loss
-def smooth_l1_loss(pred, target, beta=1.0):
+def smooth_l1_loss(pred, target, smooth_l1_s, beta=1.0):
     """Smooth L1 loss.
 
     Args:
@@ -22,9 +22,35 @@ def smooth_l1_loss(pred, target, beta=1.0):
     """
     assert beta > 0
     assert pred.size() == target.size() and target.numel() > 0
-    diff = torch.abs(pred - target)
-    loss = torch.where(diff < beta, 0.5 * diff * diff / beta,
-                       diff - 0.5 * beta)
+    if beta < 1e-5:
+        # if beta == 0, then torch.where will result in nan gradients when
+        # the chain rule is applied due to pytorch implementation details
+        # (the False branch "0.5 * n ** 2 / 0" has an incoming gradient of
+        # zeros, rather than "no gradient"). To avoid this issue, we define
+        # small values of beta to be exactly l1 loss.
+        loss = torch.abs(pred - target) / (2 * torch.exp(smooth_l1_s)) + 0.5 * smooth_l1_s
+    else:
+        n = torch.abs(pred - target)
+        cond = n < beta
+        factor = 1.0 / (4.0 * torch.exp(smooth_l1_s))
+        loss = torch.where(cond,
+                           factor * n ** 2 / beta + 0.5 * smooth_l1_s,
+
+                           -1 / beta * torch.log(
+                               1 - torch.erf(
+                                   beta / torch.sqrt(2 * torch.exp(smooth_l1_s))
+                               )
+                           ) * n + torch.log(
+                               1 - torch.erf(
+                                   beta / torch.sqrt(2 * torch.exp(smooth_l1_s))
+                               )
+                           ) + factor * beta + 0.5 * smooth_l1_s
+                           )
+
+    # if not np.isfinite(np.mean(loss.detach().cpu().item())):
+    #     import logging
+    #     logger = logging.getLogger(__name__)
+    #     logger.debug(f"inputs: {input.detach().to('cpu').numpy()}, targets: {target.detach().to('cpu').numpy()}, smooth_l1_s: {smooth_l1_s.detach().to('cpu').numpy()}")
     return loss
 
 
@@ -62,6 +88,8 @@ class SmoothL1Loss(nn.Module):
         self.beta = beta
         self.reduction = reduction
         self.loss_weight = loss_weight
+        self.smooth_l1_s = torch.nn.Parameter(torch.ones(1, dtype=torch.float32))
+        self.register_parameter(name="smooth_l1_s", param=self.smooth_l1_s)
 
     def forward(self,
                 pred,
@@ -90,6 +118,7 @@ class SmoothL1Loss(nn.Module):
             pred,
             target,
             weight,
+            smooth_l1_s=self.smooth_l1_s,
             beta=self.beta,
             reduction=reduction,
             avg_factor=avg_factor,

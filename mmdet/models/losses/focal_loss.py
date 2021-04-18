@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from mmcv.ops import sigmoid_focal_loss as _sigmoid_focal_loss
+# from mmcv.ops import sigmoid_focal_loss as _sigmoid_focal_loss
 
 from ..builder import LOSSES
 from .utils import weight_reduce_loss
@@ -56,7 +56,38 @@ def py_sigmoid_focal_loss(pred,
     return loss
 
 
-def sigmoid_focal_loss(pred,
+def _sigmoid_focal_loss(focal_s, inputs, targets, alpha=2.0, gamma=0.25, reduction='none'):
+    p = torch.sigmoid(inputs)
+    # focal_s = torch.clamp(focal_s, -1.0, 2.0)
+    ce_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction="none") * torch.exp(-focal_s) + focal_s / 2
+
+    p_t = p * targets + (1 - p) * (1 - targets)
+    loss = ce_loss * (torch.exp(-0.5 * focal_s) * (1 - p_t) ** torch.exp(-focal_s)) ** gamma
+
+    # loss_correction = focal_s / 2 * (1 - torch.exp(-1.5 * focal_s)) ** gamma
+
+    if alpha >= 0:
+        alpha_t = alpha * targets + (1 - alpha) * (1 - targets)
+        loss = alpha_t * loss
+        # loss_correction = alpha_t * loss_correction
+
+    # loss = loss - loss_correction
+    # loss = loss + torch.pow(focal_s, 2)
+
+    if reduction == "mean":
+        loss = loss.mean()
+    elif reduction == "sum":
+        loss = loss.sum()
+
+    # if not np.isfinite(np.mean(loss.detach().cpu().item())):
+    #     # if (focal_s.grad is not None):
+    #     logger.debug(f"focal_s: {focal_s.detach().cpu().numpy()},"
+    #                  f"focal_s_grad: {focal_s.grad.detach().to('cpu').numpy()}")
+
+    return loss #+ torch.pow(focal_s, 2)
+
+def sigmoid_focal_loss(focal_s,
+                       pred,
                        target,
                        weight=None,
                        gamma=2.0,
@@ -82,8 +113,7 @@ def sigmoid_focal_loss(pred,
     """
     # Function.apply does not accept keyword arguments, so the decorator
     # "weighted_loss" is not applicable
-    loss = _sigmoid_focal_loss(pred.contiguous(), target, gamma, alpha, None,
-                               'none')
+    loss = _sigmoid_focal_loss(focal_s, pred.contiguous(), target, alpha, gamma, 'none')
     if weight is not None:
         if weight.shape != loss.shape:
             if weight.size(0) == loss.size(0):
@@ -170,6 +200,7 @@ class FocalLoss(nn.Module):
                 calculate_loss_func = py_sigmoid_focal_loss
 
             loss_cls = self.loss_weight * calculate_loss_func(
+                self.focal_s,
                 pred,
                 target,
                 weight,
