@@ -401,10 +401,9 @@ class AnchorHead(BaseDenseHead, BBoxTestMixin):
             dict[str, Tensor]: A dictionary of loss components.
         """
         # classification loss
-        labels = labels.reshape(-1)
+        labels = labels.reshape(-1, self.cls_out_channels)
         label_weights = label_weights.reshape(-1)
-        cls_score = cls_score.permute(0, 2, 3,
-                                      1).reshape(-1, self.cls_out_channels)
+        cls_score = cls_score.permute(0, 2, 3, 1).reshape(-1, self.cls_out_channels)
         loss_cls = self.loss_cls(
             cls_score, labels, label_weights, avg_factor=num_total_samples)
         # regression loss
