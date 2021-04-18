@@ -57,7 +57,9 @@ def py_sigmoid_focal_loss(pred,
 
 
 def _sigmoid_focal_loss(focal_s, pred, target, alpha=2.0, gamma=0.25, reduction='none'):
-    pred = torch.mean(pred, 1)
+    num_classes = pred.size(1)
+    target = F.one_hot(target, num_classes=num_classes + 1)
+    target = target[:, :num_classes]
 
     pred_sigmoid = pred.sigmoid()
     target = target.type_as(pred)
