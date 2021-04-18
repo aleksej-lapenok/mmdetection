@@ -56,18 +56,21 @@ def py_sigmoid_focal_loss(pred,
     return loss
 
 
-def _sigmoid_focal_loss(focal_s, inputs, targets, alpha=2.0, gamma=0.25, reduction='none'):
-    p = torch.sigmoid(inputs)
-    # focal_s = torch.clamp(focal_s, -1.0, 2.0)
-    ce_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction="none") * torch.exp(-focal_s) + focal_s / 2
+def _sigmoid_focal_loss(focal_s, pred, target, alpha=2.0, gamma=0.25, reduction='none'):
 
-    p_t = p * targets + (1 - p) * (1 - targets)
+    pred_sigmoid = pred.sigmoid()
+    target = target.type_as(pred)
+
+    # focal_s = torch.clamp(focal_s, -1.0, 2.0)
+    ce_loss = F.binary_cross_entropy_with_logits(pred, target, reduction="none") * torch.exp(-focal_s) + focal_s / 2
+
+    p_t = pred_sigmoid * target + (1 - pred_sigmoid) * (1 - target)
     loss = ce_loss * (torch.exp(-0.5 * focal_s) * (1 - p_t) ** torch.exp(-focal_s)) ** gamma
 
     # loss_correction = focal_s / 2 * (1 - torch.exp(-1.5 * focal_s)) ** gamma
 
     if alpha >= 0:
-        alpha_t = alpha * targets + (1 - alpha) * (1 - targets)
+        alpha_t = alpha * target + (1 - alpha) * (1 - target)
         loss = alpha_t * loss
         # loss_correction = alpha_t * loss_correction
 
@@ -86,7 +89,7 @@ def _sigmoid_focal_loss(focal_s, inputs, targets, alpha=2.0, gamma=0.25, reducti
 
     return loss #+ torch.pow(focal_s, 2)
 
-def sigmoid_focal_loss(#focal_s,
+def sigmoid_focal_loss(focal_s,
                        pred,
                        target,
                        weight=None,
@@ -113,9 +116,9 @@ def sigmoid_focal_loss(#focal_s,
     """
     # Function.apply does not accept keyword arguments, so the decorator
     # "weighted_loss" is not applicable
-    # loss = _sigmoid_focal_loss(focal_s, pred.contiguous(), target, alpha, gamma, 'none')
-    loss = _sigmoid_focal_loss2(pred.contiguous(), target, gamma, alpha, None,
-                               'none')
+    loss = _sigmoid_focal_loss(focal_s, pred.contiguous(), target, alpha, gamma, 'none')
+    # loss = _sigmoid_focal_loss2(pred.contiguous(), target, gamma, alpha, None,
+    #                            'none')
     if weight is not None:
         if weight.shape != loss.shape:
             if weight.size(0) == loss.size(0):
@@ -202,7 +205,7 @@ class FocalLoss(nn.Module):
                 calculate_loss_func = py_sigmoid_focal_loss
 
             loss_cls = self.loss_weight * calculate_loss_func(
-                # self.focal_s,
+                self.focal_s,
                 pred,
                 target,
                 weight,
